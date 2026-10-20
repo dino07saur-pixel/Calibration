@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Tool Calibration Management System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js for Cost Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- EmailJS SDK for browser email sending -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <style>
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 3px;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 dark:text-slate-100 dark:bg-slate-900 font-sans antialiased selection:bg-brand-500 selection:text-white transition-colors duration-200">
+
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- TOP NAV / ROLE & CONTROLS HEADER -->
+        <header class="sticky top-0 z-30 bg-slate-900 text-white border-b border-slate-800 shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+                
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-brand-500/20 text-brand-400 rounded-lg border border-brand-500/30">
+                        <i data-lucide="wrench" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight tracking-wide flex items-center gap-2">
+                            CalibraTech <span class="text-xs font-semibold px-2 py-0.5 rounded bg-brand-500/30 text-brand-300 border border-brand-500/40">PRO v2.5</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">Tool Calibration & Email Dispatch Suite</p>
+                    </div>
+                </div>
+
+                <!-- Right Side Actions: Role Switcher, Email Settings, Theme & Seed Data -->
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    
+                    <!-- Email Settings Button -->
+                    <button onclick="openEmailSettingsModal()" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-brand-300 border border-slate-700 transition" title="Email Reminders Settings">
+                        <i data-lucide="mail shadow-sm" class="w-4 h-4 text-brand-400"></i>
+                        <span class="hidden sm:inline">Email Config</span>
+                        <span id="emailStatusDot" class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                    </button>
+
+                    <!-- Role Switcher -->
+                    <div class="flex items-center space-x-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
+                        <span class="text-xs font-medium text-slate-400 pl-2 hidden md:inline">Role:</span>
+                        <select id="userRoleSelect" onchange="changeUserRole(this.value)" class="bg-slate-900 text-xs font-semibold text-brand-400 rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="admin">Quality Manager (Admin)</option>
+                            <option value="technician">Calibration Technician</option>
+                            <option value="viewer">Viewer / Operator (Read-Only)</option>
+                        </select>
+                    </div>
+
+                    <!-- Theme Toggle -->
+                    <button onclick="toggleDarkMode()" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition" title="Toggle Theme">
+                        <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
+                    </button>
+
+                    <!-- Reset Data Button -->
+                    <button onclick="resetDataToDefault()" class="hidden sm:flex items-center space-x-1 text-xs text-slate-400 hover:text-red-400 px-2 py-1.5 rounded hover:bg-slate-800 transition" title="Reset Demo Data">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Reset Data</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+            <!-- BANNER NOTIFICATION FOR ROLE -->
+            <div id="roleBanner" class="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-700 dark:text-brand-300 text-xs flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 shrink-0"></i>
+                    <span>Logged in as: <strong id="roleNameDisplay">Quality Manager (Admin)</strong> — Full edit permissions granted including cost parameter updates and email notification dispatches.</span>
+                </div>
+                <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-brand-500/20 text-brand-600 dark:text-brand-300">Access Granted</span>
+            </div>
+
+            <!-- KEY METRICS DASHBOARD -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <!-- Total Tools Card -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-sm hover:shadow-md transition">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Active Tools</p>
+                            <h2 class="text-2xl font-black mt-1 text-slate-900 dark:text-white" id="statTotalTools">0</h2>
+                        </div>
+                        <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                            <i data-lucide="boxes" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1">
+                        <span class="text-emerald-500 font-semibold flex items-center"><i data-lucide="check" class="w-3 h-3"></i> Standard</span> inventory count
+                    </p>
+                </div>
+
+                <!-- Due Soon / Action Required Card -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-sm hover:shadow-md transition">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action Required Soon</p>
+                            <h2 class="text-2xl font-black mt-1 text-amber-600 dark:text-amber-400" id="statDueSoon">0</h2>
+                        </div>
+                        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                            <i data-lucide="clock" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1">
+                        Within lead time window (&le;30 days)
+                    </p>
+                </div>
+
+                <!-- Overdue / Emergency Card -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-sm hover:shadow-md transition">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Overdue / Emergency</p>
+                            <h2 class="text-2xl font-black mt-1 text-rose-600 dark:text-rose-400" id="statOverdue">0</h2>
+                        </div>
+                        <div class="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                            <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1">
+                        Past target send date or 12h remaining
+                    </p>
+                </div>
+
+                <!-- Emails Dispatched Card -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-sm hover:shadow-md transition">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email Alerts Sent</p>
+                            <h2 class="text-2xl font-black mt-1 text-brand-600 dark:text-brand-400" id="statEmailsSent">0</h2>
+                        </div>
+                        <div class="p-3 rounded-xl bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400">
+                            <i data-lucide="send" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1">
+                        Total sent or simulated emails
+                    </p>
+                </div>
+            </div>
+
+            <!-- TABS & ACTIONS ROW -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+                
+                <!-- Navigation Tabs -->
+                <div class="flex space-x-1 p-1 bg-slate-200/60 dark:bg-slate-800 rounded-xl max-w-fit flex-wrap gap-y-1">
+                    <button onclick="switchTab('inventory')" id="tabBtnInventory" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm flex items-center space-x-2">
+                        <i data-lucide="list" class="w-4 h-4"></i>
+                        <span>Tool Inventory</span>
+                    </button>
+                    <button onclick="switchTab('reminders')" id="tabBtnReminders" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-2">
+                        <i data-lucide="bell" class="w-4 h-4"></i>
+                        <span>Escalation Engine</span>
+                        <span id="pendingBadgeCount" class="px-1.5 py-0.5 text-[10px] rounded-full bg-rose-500 text-white font-bold">0</span>
+                    </button>
+                    <button onclick="switchTab('emailLog')" id="tabBtnEmailLog" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-2">
+                        <i data-lucide="mail-check" class="w-4 h-4"></i>
+                        <span>Sent Email History</span>
+                        <span id="emailHistoryBadgeCount" class="px-1.5 py-0.5 text-[10px] rounded-full bg-brand-500 text-white font-bold">0</span>
+                    </button>
+                    <button onclick="switchTab('analytics')" id="tabBtnAnalytics" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-2">
+                        <i data-lucide="pie-chart" class="w-4 h-4"></i>
+                        <span>Cost Analytics</span>
+                    </button>
+                </div>
+
+                <!-- Right Action Buttons -->
+                <div class="flex items-center space-x-2">
+                    <button onclick="exportToCSV()" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center space-x-1.5">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Export CSV</span>
+                    </button>
+
+                    <label class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer flex items-center space-x-1.5">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        <span>Import CSV</span>
+                        <input type="file" id="csvFileInput" accept=".csv" onchange="importFromCSV(event)" class="hidden">
+                    </label>
+
+                    <button id="addToolBtn" onclick="openAddToolModal()" class="px-4 py-2 text-xs font-bold rounded-xl bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20 transition flex items-center space-x-1.5">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Add New Tool</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- VIEW 1: TOOL INVENTORY SECTION -->
+            <section id="viewInventory" class="space-y-4">
+                
+                <!-- Quick Filter Chips & Search Bar -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm">
+                    
+                    <!-- Quick Filters -->
+                    <div class="flex items-center space-x-1.5 overflow-x-auto pb-2 sm:pb-0">
+                        <button onclick="setFilter('all')" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border transition bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-300 border-brand-200 dark:border-brand-800" data-filter="all">All Tools</button>
+                        <button onclick="setFilter('action')" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border transition border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" data-filter="action">Pending Action</button>
+                        <button onclick="setFilter('Sent for Calibration')" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border transition border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" data-filter="Sent for Calibration">Sent Out</button>
+                        <button onclick="setFilter('Completed')" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border transition border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" data-filter="Completed">Completed</button>
+                        <button onclick="setFilter('overdue')" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border transition border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" data-filter="overdue">Overdue / Emergency</button>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative min-w-[240px]">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                        <input type="text" id="searchInput" onkeyup="handleSearch()" placeholder="Search tools, IDs, vendors..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Inventory Table -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    <th class="py-3 px-4">Tool Specs</th>
+                                    <th class="py-3 px-4">Calibration Vendor</th>
+                                    <th class="py-3 px-4">Lead Time</th>
+                                    <th class="py-3 px-4">Next Due Date</th>
+                                    <th class="py-3 px-4">Target Send Date</th>
+                                    <th class="py-3 px-4">Escalation Stage</th>
+                                    <th class="py-3 px-4">Status</th>
+                                    <th class="py-3 px-4 text-right">Cost ($)</th>
+                                    <th class="py-3 px-4 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTableBody" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-xs">
+                                <!-- Dynamic Rows JS Loaded -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Empty State Placeholder -->
+                    <div id="emptyState" class="hidden p-12 text-center">
+                        <i data-lucide="box" class="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3"></i>
+                        <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">No matching tools found</p>
+                        <p class="text-xs text-slate-400 mt-1">Try clearing filters or adding a new tool to your inventory.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 2: ESCALATION SIMULATOR & LOG SECTION -->
+            <section id="viewReminders" class="hidden space-y-6">
+                
+                <!-- Explanation Card -->
+                <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="flex items-start space-x-3">
+                        <i data-lucide="info" class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"></i>
+                        <div>
+                            <strong class="font-bold">Multi-Stage Escalation Engine & Auto-Email Dispatch:</strong>
+                            <p class="text-amber-700 dark:text-amber-300/80 mt-0.5">
+                                Reminders calculate <code>Target Send Date = (Due Date - Lead Time)</code>. Triggers execute at: <b>30d</b>, <b>15d</b>, <b>7d</b>, <b>4d</b>, <b>2d</b>, <b>1d</b>, and <b>12h / Overdue</b> thresholds. When auto-notifications are active, emails are dispatched to configured recipients.
+                            </p>
+                        </div>
+                    </div>
+                    <button onclick="triggerSimulatedCheck()" class="shrink-0 px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-amber-600/20">
+                        <i data-lucide="play-circle" class="w-4 h-4"></i>
+                        <span>Run Daily Email & Notification Engine</span>
+                    </button>
+                </div>
+
+                <!-- Simulation Queue Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Left 2 Cols: Active Reminder Queue -->
+                    <div class="lg:col-span-2 space-y-4">
+                        <h3 class="font-bold text-sm uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                            <i data-lucide="clock" class="w-4 h-4 text-brand-500"></i> Active Alert Queue & Action Triggers
+                        </h3>
+
+                        <div id="reminderQueueList" class="space-y-3">
+                            <!-- Dynamic Cards Generated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Right Col: Automated Activity Log -->
+                    <div class="space-y-4">
+                        <h3 class="font-bold text-sm uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                            <i data-lucide="activity" class="w-4 h-4 text-emerald-500"></i> System & Email Audit Trail
+                        </h3>
+
+                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-sm h-[500px] flex flex-col">
+                            <div id="auditLogContainer" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs font-mono">
+                                <!-- Log Entries JS -->
+                            </div>
+                            <div class="pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                <span class="text-[10px] text-slate-400">Auto-refresh active</span>
+                                <button onclick="clearAuditLog()" class="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline">Clear Log</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 3: SENT EMAIL HISTORY TAB -->
+            <section id="viewEmailLog" class="hidden space-y-4">
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                            <i data-lucide="mail-check" class="w-4 h-4 text-brand-500"></i> Sent Email Notifications Log
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Review all emails dispatched by manual triggers or automated escalation checks.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="clearEmailLog()" class="px-3 py-1.5 text-xs text-rose-500 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition">
+                            Clear Mail History
+                        </button>
+                        <button onclick="openEmailSettingsModal()" class="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition shadow-sm flex items-center space-x-1">
+                            <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+                            <span>Configure SMTP / EmailJS</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    <th class="py-3 px-4">Timestamp</th>
+                                    <th class="py-3 px-4">Recipient(s)</th>
+                                    <th class="py-3 px-4">Subject</th>
+                                    <th class="py-3 px-4">Tool ID / Ref</th>
+                                    <th class="py-3 px-4">Status</th>
+                                    <th class="py-3 px-4 text-center">Preview Message</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emailLogTableBody" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-xs">
+                                <!-- Loaded via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="emailLogEmptyState" class="hidden p-8 text-center text-slate-400 text-xs">
+                        No sent email logs available. Trigger a reminder or test email to view history.
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 4: COST ANALYTICS & VENDOR REPORTS -->
+            <section id="viewAnalytics" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    <!-- Vendor Cost Distribution -->
+                    <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-sm">
+                        <h3 class="font-bold text-sm text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="pie-chart" class="w-4 h-4 text-brand-500"></i> Calibration Spend by Vendor ($)
+                        </h3>
+                        <div class="h-64 relative flex items-center justify-center">
+                            <canvas id="vendorCostChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Status Distribution -->
+                    <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-sm">
+                        <h3 class="font-bold text-sm text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="bar-chart-2" class="w-4 h-4 text-brand-500"></i> Inventory Status Breakdown
+                        </h3>
+                        <div class="h-64 relative flex items-center justify-center">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- EMAIL SETTINGS & SMTP CONFIGURATION MODAL -->
+    <div id="emailSettingsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden transform transition-all">
+            
+            <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="mail-settings" class="w-5 h-5 text-brand-400"></i>
+                    <h3 class="font-bold text-base">Email Reminders & Gateway Config</h3>
+                </div>
+                <button onclick="closeEmailSettingsModal()" class="text-slate-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="emailSettingsForm" onsubmit="saveEmailSettings(event)" class="p-6 space-y-4 text-xs">
+                
+                <!-- Master Toggle -->
+                <div class="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div>
+                        <strong class="font-bold text-slate-800 dark:text-slate-200 block">Enable Automated Email Alerts</strong>
+                        <span class="text-[11px] text-slate-500">Automatically trigger email dispatches when escalation thresholds are hit</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="emailAutoEnabled" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
+                    </label>
+                </div>
+
+                <!-- Provider Selector -->
+                <div>
+                    <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Delivery Service Provider</label>
+                    <select id="emailProvider" onchange="toggleProviderFields(this.value)" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <option value="simulation">Browser Simulation / Offline Log (Built-in)</option>
+                        <option value="emailjs">EmailJS SDK (Client API)</option>
+                        <option value="custom_api">SendGrid / Custom Webhook Gateway</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Sender Email Address *</label>
+                        <input type="email" id="emailSender" required placeholder="calibration-alerts@company.com" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Default Notification Recipient(s) *</label>
+                        <input type="text" id="emailRecipients" required placeholder="qa-team@company.com, tech@company.com" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Dynamic EmailJS / Custom Config Fields -->
+                <div id="emailjsFields" class="p-3 bg-brand-50/50 dark:bg-slate-900/40 rounded-xl border border-brand-200 dark:border-slate-700 space-y-3">
+                    <p class="font-bold text-brand-800 dark:text-brand-300">EmailJS Credentials Configuration:</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Public Key / User ID</label>
+                            <input type="text" id="emailjsPublicKey" placeholder="user_xxxxxxxxx" class="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Service ID</label>
+                            <input type="text" id="emailjsServiceId" placeholder="service_xxxxx" class="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Template ID</label>
+                            <input type="text" id="emailjsTemplateId" placeholder="template_xxxxx" class="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="customApiFields" class="hidden p-3 bg-brand-50/50 dark:bg-slate-900/40 rounded-xl border border-brand-200 dark:border-slate-700 space-y-2">
+                    <label class="block font-semibold text-slate-700 dark:text-slate-300">Webhook or Custom API Endpoint URL</label>
+                    <input type="url" id="customApiUrl" placeholder="https://api.yourcompany.com/v1/send-email" class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl">
+                </div>
+
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <button type="button" onclick="sendTestEmailFromSettings()" class="px-3.5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-bold rounded-xl transition flex items-center space-x-1.5">
+                        <i data-lucide="send" class="w-3.5 h-3.5 text-brand-500"></i>
+                        <span>Send Test Email Now</span>
+                    </button>
+
+                    <div class="flex space-x-2">
+                        <button type="button" onclick="closeEmailSettingsModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">Cancel</button>
+                        <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold transition shadow-md shadow-brand-500/20">Save Settings</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EMAIL PREVIEW MODAL -->
+    <div id="emailPreviewModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+            
+            <div class="p-5 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="eye" class="w-5 h-5 text-brand-400"></i>
+                    <h3 class="font-bold text-base">Dispatched Email Preview Payload</h3>
+                </div>
+                <button onclick="closeEmailPreviewModal()" class="text-slate-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-4 text-xs font-sans">
+                <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                    <p><strong>From:</strong> <span id="previewFrom" class="text-slate-600 dark:text-slate-300">--</span></p>
+                    <p><strong>To:</strong> <span id="previewTo" class="text-slate-600 dark:text-slate-300">--</span></p>
+                    <p><strong>Subject:</strong> <span id="previewSubject" class="font-bold text-brand-600 dark:text-brand-400">--</span></p>
+                    <p><strong>Status:</strong> <span id="previewStatus" class="px-2 py-0.5 rounded text-[10px] font-bold">--</span></p>
+                </div>
+
+                <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white text-slate-800 font-sans shadow-inner leading-relaxed space-y-3" id="previewBody">
+                    <!-- Dynamic Email Content HTML -->
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-right shrink-0">
+                <button onclick="closeEmailPreviewModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition">
+                    Close Preview
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD / EDIT TOOL MODAL -->
+    <div id="toolModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden transform transition-all">
+            
+            <!-- Modal Header -->
+            <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="wrench" class="w-5 h-5 text-brand-400"></i>
+                    <h3 id="modalTitle" class="font-bold text-base">Add New Calibration Tool</h3>
+                </div>
+                <button onclick="closeToolModal()" class="text-slate-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="toolForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 text-xs">
+                <input type="hidden" id="formToolIndex" value="-1">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Tool ID / Tag *</label>
+                        <input type="text" id="formToolId" required placeholder="e.g. CAL-MIC-001" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Tool Name / Model *</label>
+                        <input type="text" id="formToolName" required placeholder="e.g. Digital Micrometer 0-25mm" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Manufacturer</label>
+                        <input type="text" id="formManufacturer" placeholder="e.g. Mitutoyo" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Calibration Vendor</label>
+                        <input type="text" id="formVendor" placeholder="e.g. Precision Calib Labs" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Vendor Lead Time (Days) *</label>
+                        <input type="number" id="formLeadTime" required min="0" value="14" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Calibration Due Date *</label>
+                        <input type="date" id="formDueDate" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div id="costInputGroup">
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Calibration Cost ($USD)</label>
+                        <input type="number" id="formCost" min="0" step="0.01" placeholder="250.00" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <span id="adminOnlyCostTag" class="text-[10px] text-amber-500 hidden">* Admin permission required to modify cost</span>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Current Status</label>
+                        <select id="formStatus" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="In Service">In Service</option>
+                            <option value="Send Required">Send Required</option>
+                            <option value="Sent for Calibration">Sent for Calibration</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-end space-x-3">
+                    <button type="button" onclick="closeToolModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold transition shadow-md shadow-brand-500/20">Save Tool</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- APPLICATION LOGIC JS -->
+    <script>
+        // 1. INITIAL MOCK DATA & APP STATE
+        const DEFAULT_TOOLS = [
+            {
+                id: "CAL-MIC-001",
+                name: "Digital Outside Micrometer (0-25mm)",
+                manufacturer: "Mitutoyo",
+                vendor: "Precision Calib Services",
+                leadTime: 14,
+                dueDate: getRelativeDateStr(10), // Target send date is -4 days (Emergency 4d/2d stage)
+                status: "Send Required",
+                cost: 220.00
+            },
+            {
+                id: "CAL-TORQ-104",
+                name: "Click Torque Wrench (20-100 Nm)",
+                manufacturer: "Snap-on",
+                vendor: "Apex Calibration Labs",
+                leadTime: 7,
+                dueDate: getRelativeDateStr(35), // Target send date is 28 days out (30d stage)
+                status: "In Service",
+                cost: 350.00
+            },
+            {
+                id: "CAL-MULT-009",
+                name: "Fluke 87V Digital Multimeter",
+                manufacturer: "Fluke",
+                vendor: "ElectroCal Standards",
+                leadTime: 10,
+                dueDate: getRelativeDateStr(2), // Target send date is overdue by 8 days!
+                status: "In Service",
+                cost: 180.00
+            },
+            {
+                id: "CAL-GAUGE-05",
+                name: "Pressure Gauge 0-100 PSI",
+                manufacturer: "WIKA",
+                vendor: "Precision Calib Services",
+                leadTime: 5,
+                dueDate: getRelativeDateStr(60), // Far in future
+                status: "Completed",
+                cost: 120.00
+            },
+            {
+                id: "CAL-VER-202",
+                name: "Vernier Caliper 150mm",
+                manufacturer: "Starrett",
+                vendor: "Metrology Solutions",
+                leadTime: 21,
+                dueDate: getRelativeDateStr(22), // Target send date is +1 day (1d Urgent)
+                status: "Send Required",
+                cost: 195.00
+            }
+        ];
+
+        const DEFAULT_EMAIL_SETTINGS = {
+            autoEnabled: true,
+            provider: 'simulation', // 'simulation', 'emailjs', 'custom_api'
+            sender: 'calibration-alerts@calibratech.io',
+            recipients: 'quality-dept@company.com, lead-tech@company.com',
+            emailjsPublicKey: '',
+            emailjsServiceId: '',
+            emailjsTemplateId: '',
+            customApiUrl: ''
+        };
+
+        let tools = [];
+        let emailSettings = {...DEFAULT_EMAIL_SETTINGS};
+        let emailHistory = [];
+        let currentRole = 'admin'; // 'admin', 'technician', 'viewer'
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let auditLogs = [];
+        let vendorChartInstance = null;
+        let statusChartInstance = null;
+
+        // Helper function for relative dates
+        function getRelativeDateStr(daysFromNow) {
+            const d = new Date();
+            d.setDate(d.getDate() + daysFromNow);
+            return d.toISOString().split('T')[0];
+        }
+
+        // Initialize App on Load
+        window.onload = function() {
+            loadFromLocalStorage();
+            lucide.createIcons();
+            renderApp();
+            addAuditLog("System initialized. Multi-stage escalation engine & email gateway ready.", "system");
+        };
+
+        // LocalStorage Management
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('calib_tools_data');
+            if (saved) {
+                try { tools = JSON.parse(saved); } catch(e) { tools = [...DEFAULT_TOOLS]; }
+            } else {
+                tools = [...DEFAULT_TOOLS];
+            }
+
+            const savedEmailSettings = localStorage.getItem('calib_email_settings');
+            if (savedEmailSettings) {
+                try { emailSettings = JSON.parse(savedEmailSettings); } catch(e) { emailSettings = {...DEFAULT_EMAIL_SETTINGS}; }
+            }
+
+            const savedEmailHistory = localStorage.getItem('calib_email_history');
+            if (savedEmailHistory) {
+                try { emailHistory = JSON.parse(savedEmailHistory); } catch(e) { emailHistory = []; }
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('calib_tools_data', JSON.stringify(tools));
+            localStorage.setItem('calib_email_settings', JSON.stringify(emailSettings));
+            localStorage.setItem('calib_email_history', JSON.stringify(emailHistory));
+        }
+
+        function resetDataToDefault() {
+            if (confirm("Reset all inventory data back to factory defaults?")) {
+                tools = JSON.parse(JSON.stringify(DEFAULT_TOOLS));
+                emailSettings = {...DEFAULT_EMAIL_SETTINGS};
+                emailHistory = [];
+                saveToLocalStorage();
+                renderApp();
+                showToast("Data reset to default set.", "info");
+                addAuditLog("Inventory and email configurations reset to demo dataset.", "warning");
+            }
+        }
+
+        // 2. ESCALATION & REMINDER COMPUTATION ENGINE
+        function calculateEscalationState(dueDateStr, leadTimeDays, status) {
+            if (status === 'Completed') {
+                return {
+                    stageKey: 'completed',
+                    label: 'Completed / Calibrated',
+                    daysRemaining: null,
+                    targetSendDate: null,
+                    colorClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300',
+                    isOverdue: false,
+                    isActionRequired: false
+                };
+            }
+
+            if (status === 'Sent for Calibration') {
+                return {
+                    stageKey: 'in_transit',
+                    label: 'In Transit / At Vendor',
+                    daysRemaining: null,
+                    targetSendDate: null,
+                    colorClass: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-300',
+                    isOverdue: false,
+                    isActionRequired: false
+                };
+            }
+
+            const dueDate = new Date(dueDateStr + 'T00:00:00');
+            const targetSendDate = new Date(dueDate);
+            targetSendDate.setDate(targetSendDate.getDate() - parseInt(leadTimeDays));
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            const diffMs = targetSendDate - today;
+            const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+            let stageKey = '';
+            let label = '';
+            let colorClass = '';
+            let isOverdue = false;
+            let isActionRequired = true;
+
+            if (daysRemaining > 30) {
+                stageKey = 'scheduled';
+                label = `Scheduled (${daysRemaining}d to target)`;
+                colorClass = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300';
+                isActionRequired = false;
+            } else if (daysRemaining > 15) {
+                stageKey = '30d';
+                label = `1st Reminder (30d out)`;
+                colorClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300';
+            } else if (daysRemaining > 7) {
+                stageKey = '15d';
+                label = `2nd Reminder (15d out)`;
+                colorClass = 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300 border-cyan-300';
+            } else if (daysRemaining > 4) {
+                stageKey = '7d';
+                label = `3rd Reminder (7d out)`;
+                colorClass = 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300';
+            } else if (daysRemaining > 2) {
+                stageKey = '4d';
+                label = `4th Reminder (4d out)`;
+                colorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border-orange-300';
+            } else if (daysRemaining > 1) {
+                stageKey = '2d';
+                label = `Critical Reminder (2d out)`;
+                colorClass = 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300';
+            } else if (daysRemaining > 0.5) {
+                stageKey = '1d';
+                label = `Urgent Reminder (1d out)`;
+                colorClass = 'bg-rose-200 text-rose-900 dark:bg-rose-900/60 dark:text-rose-200 border-rose-400 font-bold';
+            } else {
+                stageKey = 'emergency';
+                label = daysRemaining <= 0 ? `OVERDUE (${Math.abs(daysRemaining)}d past send target)` : `Emergency Alert (1/2 Day Left!)`;
+                colorClass = 'bg-red-600 text-white font-black animate-pulse border-red-700 shadow-md shadow-red-500/30';
+                isOverdue = true;
+            }
+
+            return {
+                stageKey,
+                label,
+                daysRemaining,
+                targetSendDate: targetSendDate.toISOString().split('T')[0],
+                colorClass,
+                isOverdue,
+                isActionRequired
+            };
+        }
+
+        // 3. MAIN RENDER CONTROLLER
+        function renderApp() {
+            renderMetrics();
+            renderInventoryTable();
+            renderReminderQueue();
+            renderEmailHistoryTable();
+            renderAnalyticsCharts();
+            enforcePermissions();
+            updateEmailStatusIndicator();
+            lucide.createIcons();
+        }
+
+        function renderMetrics() {
+            let total = tools.length;
+            let dueSoon = 0;
+            let overdue = 0;
+
+            tools.forEach(tool => {
+                const state = calculateEscalationState(tool.dueDate, tool.leadTime, tool.status);
+                if (state.isActionRequired) dueSoon++;
+                if (state.isOverdue) overdue++;
+            });
+
+            document.getElementById('statTotalTools').innerText = total;
+            document.getElementById('statDueSoon').innerText = dueSoon;
+            document.getElementById('statOverdue').innerText = overdue;
+            document.getElementById('statEmailsSent').innerText = emailHistory.length;
+            document.getElementById('pendingBadgeCount').innerText = dueSoon;
+            document.getElementById('emailHistoryBadgeCount').innerText = emailHistory.length;
+        }
+
+        function renderInventoryTable() {
+            const tbody = document.getElementById('inventoryTableBody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            const filteredTools = tools.filter(tool => {
+                const state = calculateEscalationState(tool.dueDate, tool.leadTime, tool.status);
+                
+                let matchesFilter = false;
+                if (currentFilter === 'all') matchesFilter = true;
+                else if (currentFilter === 'action') matchesFilter = state.isActionRequired;
+                else if (currentFilter === 'overdue') matchesFilter = state.isOverdue;
+                else matchesFilter = tool.status === currentFilter;
+
+                const query = searchQuery.toLowerCase();
+                const matchesSearch = tool.id.toLowerCase().includes(query) ||
+                                      tool.name.toLowerCase().includes(query) ||
+                                      (tool.manufacturer && tool.manufacturer.toLowerCase().includes(query)) ||
+                                      (tool.vendor && tool.vendor.toLowerCase().includes(query));
+
+                return matchesFilter && matchesSearch;
+            });
+
+            if (filteredTools.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filteredTools.forEach((tool) => {
+                const originalIndex = tools.indexOf(tool);
+                const state = calculateEscalationState(tool.dueDate, tool.leadTime, tool.status);
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors";
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4">
+                        <div class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <span>${escapeHtml(tool.name)}</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 font-mono mt-0.5">ID: ${escapeHtml(tool.id)} | Mfr: ${escapeHtml(tool.manufacturer || 'N/A')}</div>
+                    </td>
+                    <td class="py-3.5 px-4 font-medium text-slate-700 dark:text-slate-300">
+                        ${escapeHtml(tool.vendor || 'Unassigned')}
+                    </td>
+                    <td class="py-3.5 px-4 text-slate-600 dark:text-slate-400">
+                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono text-[11px]">${tool.leadTime} Days</span>
+                    </td>
+                    <td class="py-3.5 px-4 font-medium text-slate-800 dark:text-slate-200">
+                        ${tool.dueDate}
+                    </td>
+                    <td class="py-3.5 px-4 font-medium ${state.isOverdue ? 'text-red-600 font-bold' : 'text-slate-600 dark:text-slate-400'}">
+                        ${state.targetSendDate ? state.targetSendDate : 'N/A'}
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-semibold border ${state.colorClass}">
+                            ${state.label}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <select onchange="updateToolStatus(${originalIndex}, this.value)" class="role-status-select bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="In Service" ${tool.status === 'In Service' ? 'selected' : ''}>In Service</option>
+                            <option value="Send Required" ${tool.status === 'Send Required' ? 'selected' : ''}>Send Required</option>
+                            <option value="Sent for Calibration" ${tool.status === 'Sent for Calibration' ? 'selected' : ''}>Sent for Calibration</option>
+                            <option value="Completed" ${tool.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                        </select>
+                    </td>
+                    <td class="py-3.5 px-4 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                        $${tool.cost ? parseFloat(tool.cost).toFixed(2) : '0.00'}
+                    </td>
+                    <td class="py-3.5 px-4 text-center">
+                        <div class="flex items-center justify-center space-x-1">
+                            <button onclick="dispatchToolEmailReminder('${tool.id}')" class="p-1.5 text-brand-600 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg transition" title="Send Email Reminder Now">
+                                <i data-lucide="mail-plus" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="openEditToolModal(${originalIndex})" class="role-edit-btn p-1.5 text-slate-400 hover:text-brand-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Edit Tool">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteTool(${originalIndex})" class="role-delete-btn p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Delete Tool">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderReminderQueue() {
+            const container = document.getElementById('reminderQueueList');
+            container.innerHTML = '';
+
+            const actionTools = tools.filter(tool => {
+                const state = calculateEscalationState(tool.dueDate, tool.leadTime, tool.status);
+                return state.isActionRequired;
+            });
+
+            if (actionTools.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                        <i data-lucide="check-circle" class="w-10 h-10 text-emerald-500 mx-auto mb-2"></i>
+                        <p class="font-bold text-slate-700 dark:text-slate-200">No Escalation Reminders Pending</p>
+                        <p class="text-xs text-slate-400 mt-1">All tools are currently up to date or marked as Completed/Sent.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            actionTools.forEach(tool => {
+                const originalIndex = tools.indexOf(tool);
+                const state = calculateEscalationState(tool.dueDate, tool.leadTime, tool.status);
+
+                const card = document.createElement('div');
+                card.className = "p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-brand-500/50";
+
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-slate-900 dark:text-white text-sm">${escapeHtml(tool.name)}</span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500">${tool.id}</span>
+                        </div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
+                            <span>Vendor: <strong class="text-slate-700 dark:text-slate-300">${escapeHtml(tool.vendor)}</strong></span>
+                            <span>Target Send: <strong class="text-slate-700 dark:text-slate-300">${state.targetSendDate}</strong></span>
+                            <span>Due Date: <strong class="text-slate-700 dark:text-slate-300">${tool.dueDate}</strong></span>
+                        </div>
+                        <div class="pt-1">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${state.colorClass}">
+                                ${state.label}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-700">
+                        <button onclick="dispatchToolEmailReminder('${tool.id}')" class="px-3 py-1.5 bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-300 border border-brand-200 dark:border-brand-800 rounded-xl text-xs font-semibold hover:bg-brand-100 transition flex items-center space-x-1">
+                            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                            <span>Email Reminder Now</span>
+                        </button>
+                        <button onclick="updateToolStatus(${originalIndex}, 'Sent for Calibration')" class="role-status-action px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center space-x-1">
+                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                            <span>Mark Sent</span>
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function renderEmailHistoryTable() {
+            const tbody = document.getElementById('emailLogTableBody');
+            const emptyState = document.getElementById('emailLogEmptyState');
+            tbody.innerHTML = '';
+
+            if (emailHistory.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            emailHistory.forEach((log, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors";
+
+                let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">Delivered</span>`;
+                if (log.status === 'simulated') {
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">Simulated</span>`;
+                } else if (log.status === 'failed') {
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300">Failed</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-mono text-[11px] text-slate-500">${log.timestamp}</td>
+                    <td class="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">${escapeHtml(log.to)}</td>
+                    <td class="py-3 px-4 font-bold text-slate-900 dark:text-white">${escapeHtml(log.subject)}</td>
+                    <td class="py-3 px-4 font-mono text-slate-600 dark:text-slate-400">${escapeHtml(log.toolId || 'N/A')}</td>
+                    <td class="py-3 px-4">${statusBadge}</td>
+                    <td class="py-3 px-4 text-center">
+                        <button onclick="previewEmailLog(${index})" class="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-lg transition flex items-center space-x-1 mx-auto">
+                            <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                            <span>Preview</span>
+                        </button>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderAnalyticsCharts() {
+            const vendorCosts = {};
+            const statusCounts = {};
+
+            tools.forEach(tool => {
+                const vendor = tool.vendor || 'Unassigned';
+                const cost = parseFloat(tool.cost) || 0;
+                vendorCosts[vendor] = (vendorCosts[vendor] || 0) + cost;
+
+                const status = tool.status || 'In Service';
+                statusCounts[status] = (statusCounts[status] || 0) + 1;
+            });
+
+            if (vendorCostChartInstance) vendorCostChartInstance.destroy();
+            if (statusChartInstance) statusChartInstance.destroy();
+
+            const ctxVendor = document.getElementById('vendorCostChart').getContext('2d');
+            vendorCostChartInstance = new Chart(ctxVendor, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(vendorCosts),
+                    datasets: [{
+                        data: Object.values(vendorCosts),
+                        backgroundColor: ['#0284c7', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(statusCounts),
+                    datasets: [{
+                        label: 'Tool Count',
+                        data: Object.values(statusCounts),
+                        backgroundColor: '#0284c7'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // 4. EMAIL DISPATCH & INTEGRATION ENGINE
+        function dispatchToolEmailReminder(toolId) {
+            const tool = tools.find(t => t.id === toolId);
+            if (!tool) return;
+
+            const state = calculateEscalationState(tool.dueDate, tool.leadTime, tool.status);
+            
+            const emailSubject = `[CALIBRATION ALERT] ${tool.id} - ${state.label}`;
+            const emailHtmlBody = `
+                <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+                    <h2 style="color: #0284c7; margin-bottom: 8px;">Tool Calibration Action Required</h2>
+                    <p style="margin-top: 0;">This is an automated calibration alert for <strong>${escapeHtml(tool.name)}</strong>.</p>
+                    
+                    <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                        <tr style="background: #f8fafc;"><td style="padding: 8px; font-weight: bold;">Tool ID:</td><td style="padding: 8px;">${tool.id}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Manufacturer:</td><td style="padding: 8px;">${escapeHtml(tool.manufacturer || 'N/A')}</td></tr>
+                        <tr style="background: #f8fafc;"><td style="padding: 8px; font-weight: bold;">Calibration Vendor:</td><td style="padding: 8px;">${escapeHtml(tool.vendor || 'N/A')}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Vendor Lead Time:</td><td style="padding: 8px;">${tool.leadTime} Days</td></tr>
+                        <tr style="background: #f8fafc;"><td style="padding: 8px; font-weight: bold;">Calibration Due Date:</td><td style="padding: 8px; font-weight: bold; color: #dc2626;">${tool.dueDate}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Target Send Date:</td><td style="padding: 8px; font-weight: bold; color: #0284c7;">${state.targetSendDate || 'Immediate'}</td></tr>
+                        <tr style="background: #f8fafc;"><td style="padding: 8px; font-weight: bold;">Escalation Status:</td><td style="padding: 8px;">${state.label}</td></tr>
+                    </table>
+
+                    <p style="font-size: 12px; color: #64748b; margin-top: 20px;">
+                        Please initiate shipment to the vendor promptly to avoid tool expiration.
+                    </p>
+                </div>
+            `;
+
+            sendEmailPayload({
+                toolId: tool.id,
+                subject: emailSubject,
+                body: emailHtmlBody,
+                recipients: emailSettings.recipients,
+                sender: emailSettings.sender
+            });
+        }
+
+        function sendEmailPayload({ toolId, subject, body, recipients, sender }) {
+            const timestamp = new Date().toLocaleString();
+
+            if (!emailSettings.autoEnabled) {
+                showToast("Email alerts are currently disabled in settings.", "warning");
+                return;
+            }
+
+            // Provider Logic
+            if (emailSettings.provider === 'emailjs' && emailSettings.emailjsPublicKey && emailSettings.emailjsServiceId) {
+                try {
+                    emailjs.init(emailSettings.emailjsPublicKey);
+                    emailjs.send(emailSettings.emailjsServiceId, emailSettings.emailjsTemplateId, {
+                        to_email: recipients,
+                        from_email: sender,
+                        subject: subject,
+                        message_html: body,
+                        tool_id: toolId
+                    }).then(() => {
+                        logEmailRecord({ timestamp, to: recipients, from: sender, subject, body, toolId, status: 'delivered' });
+                        showToast(`Email alert dispatched via EmailJS to ${recipients}`, "success");
+                    }, (err) => {
+                        logEmailRecord({ timestamp, to: recipients, from: sender, subject, body, toolId, status: 'failed' });
+                        showToast(`EmailJS Delivery Failed: ${err.text || 'Error'}`, "error");
+                    });
+                } catch(err) {
+                    logEmailRecord({ timestamp, to: recipients, from: sender, subject, body, toolId, status: 'failed' });
+                    showToast("EmailJS initialization failed.", "error");
+                }
+            } else if (emailSettings.provider === 'custom_api' && emailSettings.customApiUrl) {
+                fetch(emailSettings.customApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sender, recipients, subject, body, toolId })
+                }).then(res => {
+                    if (res.ok) {
+                        logEmailRecord({ timestamp, to: recipients, from: sender, subject, body, toolId, status: 'delivered' });
+                        showToast("Email alert sent via custom webhook API.", "success");
+                    } else {
+                        throw new Error("HTTP " + res.status);
+                    }
+                }).catch(err => {
+                    logEmailRecord({ timestamp, to: recipients, from: sender, subject, body, toolId, status: 'failed' });
+                    showToast("Webhook email dispatch failed.", "error");
+                });
+            } else {
+                // Default Built-in Browser Simulation
+                logEmailRecord({ timestamp, to: recipients, from: sender, subject, body, toolId, status: 'simulated' });
+                showToast(`[Simulated Email] Alert sent to ${recipients}`, "info");
+            }
+        }
+
+        function logEmailRecord(record) {
+            emailHistory.unshift(record);
+            saveToLocalStorage();
+            renderApp();
+            addAuditLog(`Email notification logged to ${record.to} [Subject: ${record.subject}]`, "email");
+        }
+
+        function clearEmailLog() {
+            if (confirm("Clear all sent email history logs?")) {
+                emailHistory = [];
+                saveToLocalStorage();
+                renderApp();
+                showToast("Sent email history cleared.", "info");
+            }
+        }
+
+        function previewEmailLog(index) {
+            const log = emailHistory[index];
+            if (!log) return;
+
+            document.getElementById('previewFrom').innerText = log.from || 'System Default';
+            document.getElementById('previewTo').innerText = log.to;
+            document.getElementById('previewSubject').innerText = log.subject;
+            
+            const statusEl = document.getElementById('previewStatus');
+            statusEl.innerText = log.status.toUpperCase();
+            statusEl.className = log.status === 'delivered' ? 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800' : 'px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800';
+
+            document.getElementById('previewBody').innerHTML = log.body;
+            document.getElementById('emailPreviewModal').classList.remove('hidden');
+        }
+
+        function closeEmailPreviewModal() {
+            document.getElementById('emailPreviewModal').classList.add('hidden');
+        }
+
+        // Email Settings Modal Functions
+        function openEmailSettingsModal() {
+            document.getElementById('emailAutoEnabled').checked = emailSettings.autoEnabled;
+            document.getElementById('emailProvider').value = emailSettings.provider;
+            document.getElementById('emailSender').value = emailSettings.sender;
+            document.getElementById('emailRecipients').value = emailSettings.recipients;
+            document.getElementById('emailjsPublicKey').value = emailSettings.emailjsPublicKey || '';
+            document.getElementById('emailjsServiceId').value = emailSettings.emailjsServiceId || '';
+            document.getElementById('emailjsTemplateId').value = emailSettings.emailjsTemplateId || '';
+            document.getElementById('customApiUrl').value = emailSettings.customApiUrl || '';
+
+            toggleProviderFields(emailSettings.provider);
+            document.getElementById('emailSettingsModal').classList.remove('hidden');
+        }
+
+        function closeEmailSettingsModal() {
+            document.getElementById('emailSettingsModal').classList.add('hidden');
+        }
+
+        function toggleProviderFields(provider) {
+            const emailjsFields = document.getElementById('emailjsFields');
+            const customApiFields = document.getElementById('customApiFields');
+
+            if (provider === 'emailjs') {
+                emailjsFields.classList.remove('hidden');
+                customApiFields.classList.add('hidden');
+            } else if (provider === 'custom_api') {
+                emailjsFields.classList.add('hidden');
+                customApiFields.classList.remove('hidden');
+            } else {
+                emailjsFields.classList.add('hidden');
+                customApiFields.classList.add('hidden');
+            }
+        }
+
+        function saveEmailSettings(e) {
+            e.preventDefault();
+            emailSettings.autoEnabled = document.getElementById('emailAutoEnabled').checked;
+            emailSettings.provider = document.getElementById('emailProvider').value;
+            emailSettings.sender = document.getElementById('emailSender').value.trim();
+            emailSettings.recipients = document.getElementById('emailRecipients').value.trim();
+            emailSettings.emailjsPublicKey = document.getElementById('emailjsPublicKey').value.trim();
+            emailSettings.emailjsServiceId = document.getElementById('emailjsServiceId').value.trim();
+            emailSettings.emailjsTemplateId = document.getElementById('emailjsTemplateId').value.trim();
+            emailSettings.customApiUrl = document.getElementById('customApiUrl').value.trim();
+
+            saveToLocalStorage();
+            closeEmailSettingsModal();
+            updateEmailStatusIndicator();
+            showToast("Email reminder settings updated successfully!", "success");
+            addAuditLog("Updated SMTP/Email Gateway parameters.", "system");
+        }
+
+        function sendTestEmailFromSettings() {
+            const sender = document.getElementById('emailSender').value.trim();
+            const recipients = document.getElementById('emailRecipients').value.trim();
+
+            if (!recipients) {
+                showToast("Please enter at least one recipient email address.", "error");
+                return;
+            }
+
+            sendEmailPayload({
+                toolId: "TEST-000",
+                subject: "[TEST EMAIL] Calibration Gateway Verification",
+                body: `<div style="font-family: sans-serif;"><h3 style="color: #0284c7;">CalibraTech Email Test</h3><p>Your email notification settings are configured correctly and active.</p></div>`,
+                recipients: recipients,
+                sender: sender
+            });
+        }
+
+        function updateEmailStatusIndicator() {
+            const dot = document.getElementById('emailStatusDot');
+            if (emailSettings.autoEnabled) {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400 inline-block";
+            } else {
+                dot.className = "w-2 h-2 rounded-full bg-rose-500 inline-block";
+            }
+        }
+
+        // 5. USER ROLE & PERMISSION ENFORCEMENT ENGINE
+        function changeUserRole(newRole) {
+            currentRole = newRole;
+            const roleNameDisplay = document.getElementById('roleNameDisplay');
+
+            if (newRole === 'admin') {
+                roleNameDisplay.innerText = "Quality Manager (Admin)";
+                showToast("Role switched to Quality Manager. Full edit rights active.", "info");
+            } else if (newRole === 'technician') {
+                roleNameDisplay.innerText = "Calibration Technician";
+                showToast("Role switched to Calibration Technician. Status updates allowed.", "info");
+            } else {
+                roleNameDisplay.innerText = "Viewer / Operator (Read-Only)";
+                showToast("Role switched to Viewer. Editing disabled.", "info");
+            }
+
+            renderApp();
+            addAuditLog(`User role switched to: ${newRole.toUpperCase()}`, "role");
+        }
+
+        function enforcePermissions() {
+            const addToolBtn = document.getElementById('addToolBtn');
+            const costInput = document.getElementById('formCost');
+            const adminCostTag = document.getElementById('adminOnlyCostTag');
+
+            if (currentRole === 'viewer') {
+                if (addToolBtn) addToolBtn.style.display = 'none';
+                document.querySelectorAll('.role-status-select').forEach(el => el.disabled = true);
+                document.querySelectorAll('.role-edit-btn').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.role-delete-btn').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.role-status-action').forEach(el => el.style.display = 'none');
+            } else if (currentRole === 'technician') {
+                if (addToolBtn) addToolBtn.style.display = 'inline-flex';
+                document.querySelectorAll('.role-status-select').forEach(el => el.disabled = false);
+                document.querySelectorAll('.role-edit-btn').forEach(el => el.style.display = 'inline-flex');
+                document.querySelectorAll('.role-delete-btn').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.role-status-action').forEach(el => el.style.display = 'inline-flex');
+
+                if (costInput) costInput.disabled = true;
+                if (adminCostTag) adminCostTag.classList.remove('hidden');
+            } else { // Admin
+                if (addToolBtn) addToolBtn.style.display = 'inline-flex';
+                document.querySelectorAll('.role-status-select').forEach(el => el.disabled = false);
+                document.querySelectorAll('.role-edit-btn').forEach(el => el.style.display = 'inline-flex');
+                document.querySelectorAll('.role-delete-btn').forEach(el => el.style.display = 'inline-flex');
+                document.querySelectorAll('.role-status-action').forEach(el => el.style.display = 'inline-flex');
+
+                if (costInput) costInput.disabled = false;
+                if (adminCostTag) adminCostTag.classList.add('hidden');
+            }
+        }
+
+        // 6. EVENT HANDLERS & MODAL ACTIONS
+        function updateToolStatus(index, newStatus) {
+            if (currentRole === 'viewer') {
+                showToast("Permission Denied: Viewers cannot modify status.", "error");
+                return;
+            }
+
+            const tool = tools[index];
+            const oldStatus = tool.status;
+            tool.status = newStatus;
+            saveToLocalStorage();
+            renderApp();
+            showToast(`Status for ${tool.id} updated to "${newStatus}"`, "success");
+            addAuditLog(`Status for ${tool.id} changed from '${oldStatus}' -> '${newStatus}' by ${currentRole}.`, "status");
+        }
+
+        function openAddToolModal() {
+            if (currentRole === 'viewer') return;
+            document.getElementById('modalTitle').innerText = "Add New Calibration Tool";
+            document.getElementById('formToolIndex').value = "-1";
+            document.getElementById('toolForm').reset();
+            document.getElementById('toolModal').classList.remove('hidden');
+        }
+
+        function openEditToolModal(index) {
+            if (currentRole === 'viewer') return;
+
+            const tool = tools[index];
+            document.getElementById('modalTitle').innerText = `Edit Tool: ${tool.id}`;
+            document.getElementById('formToolIndex').value = index;
+            document.getElementById('formToolId').value = tool.id;
+            document.getElementById('formToolName').value = tool.name;
+            document.getElementById('formManufacturer').value = tool.manufacturer || '';
+            document.getElementById('formVendor').value = tool.vendor || '';
+            document.getElementById('formLeadTime').value = tool.leadTime;
+            document.getElementById('formDueDate').value = tool.dueDate;
+            document.getElementById('formCost').value = tool.cost || '';
+            document.getElementById('formStatus').value = tool.status;
+
+            document.getElementById('toolModal').classList.remove('hidden');
+        }
+
+        function closeToolModal() {
+            document.getElementById('toolModal').classList.add('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const idx = parseInt(document.getElementById('formToolIndex').value);
+            const toolData = {
+                id: document.getElementById('formToolId').value.trim(),
+                name: document.getElementById('formToolName').value.trim(),
+                manufacturer: document.getElementById('formManufacturer').value.trim(),
+                vendor: document.getElementById('formVendor').value.trim(),
+                leadTime: parseInt(document.getElementById('formLeadTime').value),
+                dueDate: document.getElementById('formDueDate').value,
+                status: document.getElementById('formStatus').value,
+                cost: parseFloat(document.getElementById('formCost').value || 0)
+            };
+
+            if (idx === -1) {
+                tools.push(toolData);
+                showToast(`Tool ${toolData.id} created successfully!`, "success");
+                addAuditLog(`Created new tool record: ${toolData.id} (${toolData.name})`, "create");
+            } else {
+                if (currentRole === 'technician') toolData.cost = tools[idx].cost;
+                tools[idx] = toolData;
+                showToast(`Tool ${toolData.id} updated successfully!`, "success");
+                addAuditLog(`Updated tool properties for ${toolData.id}`, "update");
+            }
+
+            saveToLocalStorage();
+            closeToolModal();
+            renderApp();
+        }
+
+        function deleteTool(index) {
+            if (currentRole !== 'admin') {
+                showToast("Permission Denied: Only Admin can delete tools.", "error");
+                return;
+            }
+
+            const tool = tools[index];
+            if (confirm(`Are you sure you want to delete ${tool.id} (${tool.name})?`)) {
+                tools.splice(index, 1);
+                saveToLocalStorage();
+                renderApp();
+                showToast(`Tool ${tool.id} deleted.`, "warning");
+                addAuditLog(`Deleted tool record: ${tool.id}`, "delete");
+            }
+        }
+
+        function setFilter(filterKey) {
+            currentFilter = filterKey;
+            document.querySelectorAll('.filter-chip').forEach(btn => {
+                if (btn.getAttribute('data-filter') === filterKey) {
+                    btn.className = "filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border transition bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-300 border-brand-200 dark:border-brand-800";
+                } else {
+                    btn.className = "filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border transition border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700";
+                }
+            });
+            renderInventoryTable();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('searchInput').value;
+            renderInventoryTable();
+        }
+
+        function switchTab(tab) {
+            document.getElementById('viewInventory').classList.add('hidden');
+            document.getElementById('viewReminders').classList.add('hidden');
+            document.getElementById('viewEmailLog').classList.add('hidden');
+            document.getElementById('viewAnalytics').classList.add('hidden');
+
+            document.getElementById('tabBtnInventory').className = "px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-2";
+            document.getElementById('tabBtnReminders').className = "px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-2";
+            document.getElementById('tabBtnEmailLog').className = "px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-2";
+            document.getElementById('tabBtnAnalytics').className = "px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-2";
+
+            if (tab === 'inventory') {
+                document.getElementById('viewInventory').classList.remove('hidden');
+                document.getElementById('tabBtnInventory').className = "px-4 py-2 text-xs font-semibold rounded-lg transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm flex items-center space-x-2";
+            } else if (tab === 'reminders') {
+                document.getElementById('viewReminders').classList.remove('hidden');
+                document.getElementById('tabBtnReminders').className = "px-4 py-2 text-xs font-semibold rounded-lg transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm flex items-center space-x-2";
+            } else if (tab === 'emailLog') {
+                document.getElementById('viewEmailLog').classList.remove('hidden');
+                document.getElementById('tabBtnEmailLog').className = "px-4 py-2 text-xs font-semibold rounded-lg transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm flex items-center space-x-2";
+            } else if (tab === 'analytics') {
+                document.getElementById('viewAnalytics').classList.remove('hidden');
+                document.getElementById('tabBtnAnalytics').className = "px-4 py-2 text-xs font-semibold rounded-lg transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm flex items-center space-x-2";
+                renderAnalyticsCharts();
+            }
+        }
+
+        // 7. SIMULATOR ENGINE & AUDIT LOGGING
+        function triggerSimulatedCheck() {
+            let triggeredCount = 0;
+            tools.forEach(tool => {
+                const state = calculateEscalationState(tool.dueDate, tool.leadTime, tool.status);
+                if (state.isActionRequired) {
+                    triggeredCount++;
+                    addAuditLog(`[AUTO-TRIGGER] Escalation state computed for ${tool.id} (${state.stageKey.toUpperCase()})`, "alert");
+                    
+                    // Trigger email dispatch if auto-alerts enabled
+                    if (emailSettings.autoEnabled) {
+                        dispatchToolEmailReminder(tool.id);
+                    }
+                }
+            });
+
+            showToast(`Engine run complete: ${triggeredCount} tools processed for emails.`, "info");
+        }
+
+        function addAuditLog(msg, type = "info") {
+            const container = document.getElementById('auditLogContainer');
+            const time = new Date().toLocaleTimeString();
+            const logItem = document.createElement('div');
+            
+            let color = "text-slate-600 dark:text-slate-300";
+            if (type === "alert" || type === "warning") color = "text-amber-500 font-bold";
+            if (type === "email") color = "text-brand-400 font-semibold";
+            if (type === "delete") color = "text-rose-500 font-bold";
+
+            logItem.className = `p-1.5 rounded bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 ${color}`;
+            logItem.innerHTML = `<span class="opacity-50">[${time}]</span> ${escapeHtml(msg)}`;
+            
+            container.prepend(logItem);
+        }
+
+        function clearAuditLog() {
+            document.getElementById('auditLogContainer').innerHTML = '';
+        }
+
+        // 8. CSV IMPORT / EXPORT CAPABILITIES
+        function exportToCSV() {
+            if (tools.length === 0) {
+                showToast("No data to export", "warning");
+                return;
+            }
+
+            let csv = "Tool ID,Tool Name,Manufacturer,Vendor,Lead Time (Days),Due Date,Status,Cost ($)\n";
+            tools.forEach(t => {
+                csv += `"${t.id}","${t.name}","${t.manufacturer || ''}","${t.vendor || ''}",${t.leadTime},"${t.dueDate}","${t.status}",${t.cost || 0}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `calibration_tools_export_${new Date().toISOString().split('T')[0]}.csv`);
+            a.click();
+            showToast("CSV Export downloaded successfully", "success");
+            addAuditLog("Exported inventory data to CSV file.", "export");
+        }
+
+        function importFromCSV(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const text = evt.target.result;
+                    const lines = text.split('\n');
+                    const importedTools = [];
+
+                    for (let i = 1; i < lines.length; i++) {
+                        if (!lines[i].trim()) continue;
+                        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+                        if (cols.length >= 6) {
+                            importedTools.push({
+                                id: cols[0],
+                                name: cols[1],
+                                manufacturer: cols[2],
+                                vendor: cols[3],
+                                leadTime: parseInt(cols[4]) || 14,
+                                dueDate: cols[5],
+                                status: cols[6] || 'In Service',
+                                cost: parseFloat(cols[7]) || 0
+                            });
+                        }
+                    }
+
+                    if (importedTools.length > 0) {
+                        tools = importedTools;
+                        saveToLocalStorage();
+                        renderApp();
+                        showToast(`Successfully imported ${importedTools.length} tools!`, "success");
+                        addAuditLog(`Imported ${importedTools.length} tools from CSV file.`, "import");
+                    } else {
+                        showToast("Failed to parse CSV structure.", "error");
+                    }
+                } catch(err) {
+                    showToast("Error reading CSV file.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 9. UTILITY HELPERS
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.setAttribute('data-lucide', 'moon');
+            } else {
+                html.classList.add('dark');
+                icon.setAttribute('data-lucide', 'sun');
+            }
+            lucide.createIcons();
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            let bg = "bg-slate-900 text-white";
+            if (type === "success") bg = "bg-emerald-600 text-white";
+            if (type === "error") bg = "bg-rose-600 text-white";
+            if (type === "warning") bg = "bg-amber-600 text-white";
+
+            toast.className = `px-4 py-2.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center space-x-2 transition-all transform translate-y-2 ${bg} pointer-events-auto`;
+            toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
